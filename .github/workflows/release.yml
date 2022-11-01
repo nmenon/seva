@@ -31,10 +31,11 @@ jobs:
         run: |
           cd seva-launcher
           make ARCH=aarch64
-          mv seva-launcher seva-launcher-aarch64
+          cp seva-launcher seva-launcher-aarch64
           make clean
           make ARCH=x86_64
-          mv seva-launcher seva-launcher-x86_64
+          cp seva-launcher seva-launcher-x86_64
+          make clean
 
       - name: Create seva-web zip
         uses: thedoctor0/zip-release@main
