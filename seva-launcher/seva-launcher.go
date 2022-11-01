@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 	"strings"
+	"io/ioutil"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -25,10 +26,13 @@ var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
 var upgrader = websocket.Upgrader{}
 var container_id_list [2]string
-
+var docker_compose string
 
 //go:embed web/*
 var content embed.FS
+
+//go:embed docker-compose
+var docker_compose_bin []byte
 
 type Containers []struct {
 	ID       string `json:"ID"`
@@ -45,6 +49,26 @@ type Containers []struct {
 		PublishedPort int    `json:"PublishedPort"`
 		Protocol      string `json:"Protocol"`
 	} `json:"Publishers"`
+}
+
+func is_docker_compose_installed() bool {
+	cmd := exec.Command("docker-compose", "-v")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println("Docker-compose is either not installed or cannot be executed")
+		log.Printf("|\n%s\n", output)
+		log.Println("Using local install for now")
+		return false
+	}
+	return true
+}
+
+func prepare_compose() string {
+	if !is_docker_compose_installed() {
+		ioutil.WriteFile("docker-compose", docker_compose_bin, 0755)
+		return "./docker-compose"
+	}
+	return "docker-compose"
 }
 
 func echo(w http.ResponseWriter, r *http.Request) {
@@ -114,25 +138,30 @@ func launch_browser() {
 	err := open.Start("http://localhost:8000/")
 	if err != nil {
 		log.Println("Host browser not detected. Fetching one through docker")
-		// TODO
-		//os.exec("docker run -it firefox")
+		docker_run("--rm", "")
 	}
+}
+
+func docker_run(args ...string) string {
+	args = append([]string{"run", "-d"}, args...)
+	cmd := exec.Command("docker", args...)
+	output, err := cmd.CombinedOutput()
+	log.Printf("|\n%s\n", output)
+	if err != nil {
+		log.Fatal("Failed to start container!")
+	}
+	return string(output)
 }
 
 func start_design_gallery() {
 	log.Println("Starting local design gallery service")
-	cmd := exec.Command("docker", "run", "--rm", "-d", "-p", "8001:80", "ghcr.io/staticrocket/seva-design-gallery:latest")
-	output, err := cmd.CombinedOutput()
-	log.Printf("|\n%s\n", output)
-	if err != nil {
-		log.Fatal("Failed to start local design gallery container!")
-	}
+	output := docker_run("--rm", "-p", "8001:80", "ghcr.io/staticrocket/seva-design-gallery:latest")
 	container_id_list[0] = strings.TrimSpace(string(output))
 }
 
 func start_app() string {
 	log.Println("Starting selected app")
-	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "up", "-d")
+	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "up", "-d")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal("Failed to start selected app!")
@@ -144,7 +173,7 @@ func start_app() string {
 
 func stop_app() string {
 	log.Println("Stopping selected app")
-	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "down", "--remove-orphans")
+	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "down", "--remove-orphans")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println("Failed to stop selected app! (It may not be running!)")
@@ -193,7 +222,7 @@ func load_app(name string) string {
 
 func is_running(name string) string {
 	log.Println("Checking if " + name + " is running")
-	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "ps", "--format", "json")
+	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "ps", "--format", "json")
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatal("Failed to check if app is running!")
@@ -250,10 +279,12 @@ func handle_requests() {
 
 func main() {
 	setup_exit_handler()
-
 	flag.Parse()
+
 	log.Println("Setting up working directory")
 	setup_working_directory()
+	docker_compose = prepare_compose()
+
 	start_design_gallery()
 
 	if !*no_browser {
