@@ -10,7 +10,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
+	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/melbahja/got"
 	"github.com/skratchdot/open-golang/open"
@@ -20,6 +24,7 @@ var store_url = "https://raw.githubusercontent.com/StaticRocket/seva-apps/main"
 var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
 var upgrader = websocket.Upgrader{}
+var container_id_list [2]string
 
 
 //go:embed web/*
@@ -106,7 +111,7 @@ func setup_working_directory() {
 }
 
 func launch_browser() {
-	err := open.Start("http://localhost/")
+	err := open.Start("http://localhost:8000/")
 	if err != nil {
 		log.Println("Host browser not detected. Fetching one through docker")
 		// TODO
@@ -122,17 +127,18 @@ func start_design_gallery() {
 	if err != nil {
 		log.Fatal("Failed to start local design gallery container!")
 	}
+	container_id_list[0] = strings.TrimSpace(string(output))
 }
 
 func start_app() string {
 	log.Println("Starting selected app")
 	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "up", "-d")
 	output, err := cmd.CombinedOutput()
-	output_s := string(output)
-	log.Printf("|\n%s\n", output_s)
 	if err != nil {
 		log.Fatal("Failed to start selected app!")
 	}
+	output_s := strings.TrimSpace(string(output))
+	log.Printf("|\n%s\n", output_s)
 	return output_s
 }
 
@@ -143,7 +149,7 @@ func stop_app() string {
 	if err != nil {
 		log.Println("Failed to stop selected app! (It may not be running!)")
 	}
-	output_s := string(output)
+	output_s := strings.TrimSpace(string(output))
 	log.Printf("|\n%s\n", output_s)
 	return output_s
 }
@@ -205,22 +211,55 @@ func is_running(name string) string {
 	return string("0")
 }
 
-func main() {
-	flag.Parse()
-	log.Println("Setting up working directory")
-	setup_working_directory()
-	start_design_gallery()
-	if !*no_browser {
-		log.Println("Launching browser")
-		launch_browser()
+func exit() {
+	log.Println("Stopping non-app containers")
+	for _, container_id := range container_id_list {
+		if len(container_id) > 0 {
+			cmd := exec.Command("docker", "stop", container_id)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Printf("Failed to stop container %s : \n%s", container_id, output)
+			}
+		}
 	}
-	//log.SetFlags(0)
-	http.HandleFunc("/ws", echo)
+	// TODO
+}
+
+func setup_exit_handler() {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		exit()
+		os.Exit(0)
+	}()
+}
+
+func handle_requests() {
+	router := mux.NewRouter()
+	router.HandleFunc("/ws", echo)
 	log.Println("Listening for websocket messages at " + *addr + "/ws")
 	root_content, err := fs.Sub(content, "web")
 	if err != nil {
 		log.Fatal("No files to server for web interface!")
 	}
-	http.Handle("/", http.FileServer(http.FS(root_content)))
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	router.PathPrefix("/").Handler(http.FileServer(http.FS(root_content)))
+	log.Fatal(http.ListenAndServe(*addr, router))
+}
+
+
+func main() {
+	setup_exit_handler()
+
+	flag.Parse()
+	log.Println("Setting up working directory")
+	setup_working_directory()
+	start_design_gallery()
+
+	if !*no_browser {
+		log.Println("Launching browser")
+		launch_browser()
+	}
+
+	handle_requests()
 }
