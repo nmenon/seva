@@ -1,7 +1,15 @@
 ARCH ?= $(shell uname -m)
 
+ifeq ($(ARCH),x86_64)
+	GOARCH=amd64
+else ifeq ($(ARCH),aarch64)
+	GOARCH=arm64
+else
+	@echo Unsupported architecture
+endif
+
 seva-launcher: docker-compose web
-	go build -tags netgo .
+	GOARCH=$(GOARCH) go build -tags netgo .
 
 docker-compose:
 	curl -s https://api.github.com/repos/docker/compose/releases/latest \
@@ -20,6 +28,6 @@ web:
 .PHONY: all clean
 all: seva-launcher
 clean:
-	rm seva-launcher
-	rm docker-compose
-	rm -r web
+	rm -f seva-launcher
+	rm -f docker-compose
+	rm -rf web
