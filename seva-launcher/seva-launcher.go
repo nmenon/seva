@@ -1,9 +1,11 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"errors"
 	"flag"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +20,10 @@ var store_url = "https://raw.githubusercontent.com/StaticRocket/seva-apps/main"
 var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
 var upgrader = websocket.Upgrader{}
+
+
+//go:embed web/*
+var content embed.FS
 
 type Containers []struct {
 	ID       string `json:"ID"`
@@ -75,7 +81,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 				}
 				resp = is_running(string(name))
 			default:
-				resp = "Ignoring invalid command..."
+				resp = "Ignoring invalid command"
 				log.Println(resp)
 		}
 		if resp != "" {
@@ -102,14 +108,24 @@ func setup_working_directory() {
 func launch_browser() {
 	err := open.Start("http://localhost/")
 	if err != nil {
-		log.Println("Host browser not detected. Fetching one through docker...")
+		log.Println("Host browser not detected. Fetching one through docker")
 		// TODO
 		//os.exec("docker run -it firefox")
 	}
 }
 
+func start_design_gallery() {
+	log.Println("Starting local design gallery service")
+	cmd := exec.Command("docker", "run", "--rm", "-d", "-p", "8001:80", "ghcr.io/staticrocket/seva-design-gallery:latest")
+	output, err := cmd.CombinedOutput()
+	log.Printf("|\n%s\n", output)
+	if err != nil {
+		log.Fatal("Failed to start local design gallery container!")
+	}
+}
+
 func start_app() string {
-	log.Println("Starting selected app...")
+	log.Println("Starting selected app")
 	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "up", "-d")
 	output, err := cmd.CombinedOutput()
 	output_s := string(output)
@@ -121,7 +137,7 @@ func start_app() string {
 }
 
 func stop_app() string {
-	log.Println("Stopping selected app...")
+	log.Println("Stopping selected app")
 	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "down", "--remove-orphans")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -144,7 +160,7 @@ func get_app() string {
 }
 
 func load_app(name string) string {
-	log.Println("Loading " + name + " from store...")
+	log.Println("Loading " + name + " from store")
 	stop_app()
 
 	files := []string{"metadata.json", "docker-compose.yml"}
@@ -170,7 +186,7 @@ func load_app(name string) string {
 }
 
 func is_running(name string) string {
-	log.Println("Checking if " + name + " is running...")
+	log.Println("Checking if " + name + " is running")
 	cmd := exec.Command("docker-compose", "-p", "seva-launcher", "ps", "--format", "json")
 	output, err := cmd.Output()
 	if err != nil {
@@ -190,15 +206,21 @@ func is_running(name string) string {
 }
 
 func main() {
-	log.Println("Setting up working directory...")
-	setup_working_directory()
 	flag.Parse()
+	log.Println("Setting up working directory")
+	setup_working_directory()
+	start_design_gallery()
 	if !*no_browser {
-		log.Println("Launching browser...")
+		log.Println("Launching browser")
 		launch_browser()
 	}
 	//log.SetFlags(0)
-	log.Println("Listening for websocket messages at " + *addr + "...")
-	http.HandleFunc("/", echo)
+	http.HandleFunc("/ws", echo)
+	log.Println("Listening for websocket messages at " + *addr + "/ws")
+	root_content, err := fs.Sub(content, "web")
+	if err != nil {
+		log.Fatal("No files to server for web interface!")
+	}
+	http.Handle("/", http.FileServer(http.FS(root_content)))
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

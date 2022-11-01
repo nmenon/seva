@@ -7,7 +7,7 @@ import 'url_builder.dart';
 import 'websocket.dart';
 
 // store url, must point to page with proper message listener
-final String store_url = 'https://staticrocket.github.io/seva-store/';
+final String store_url = 'http://${host_name}:8001/';
 
 // Global key in case we want to use more snackbar messages
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
