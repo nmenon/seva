@@ -127,11 +127,13 @@ func echo(w http.ResponseWriter, r *http.Request) {
 func setup_working_directory() {
 	err := os.MkdirAll("/tmp/seva-launcher", os.ModePerm)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		exit(1)
 	}
 	err = os.Chdir("/tmp/seva-launcher")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		exit(1)
 	}
 }
 
@@ -168,7 +170,8 @@ func docker_run(args ...string) []byte {
 	log.Printf("|\n%s\n", output)
 	if err != nil {
 		log.Println("Failed to start container!")
-		log.Fatal(err)
+		log.Println(err)
+		exit(1)
 	}
 	return output
 }
@@ -184,7 +187,8 @@ func start_app() string {
 	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "up", "-d")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatal("Failed to start selected app!")
+		log.Println("Failed to start selected app!")
+		exit(1)
 	}
 	output_s := strings.TrimSpace(string(output))
 	log.Printf("|\n%s\n", output_s)
@@ -209,7 +213,8 @@ func get_app() string {
 	}
 	content, err := os.ReadFile("metadata.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		exit(1)
 	}
 	return string(content)
 }
@@ -225,7 +230,8 @@ func load_app(name string) string {
 		}
 		err := os.Remove(element)
 		if err != nil {
-			log.Fatal("Failed to remove old files")
+			log.Println("Failed to remove old files")
+			exit(1)
 		}
 	}
 	g := got.New()
@@ -234,7 +240,8 @@ func load_app(name string) string {
 		log.Println("Fetching " + element + " from: " + url)
 		err := g.Download(url, element)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			exit(1)
 		}
 	}
 	return string("0")
@@ -245,12 +252,14 @@ func is_running(name string) string {
 	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "ps", "--format", "json")
 	output, err := cmd.Output()
 	if err != nil {
-		log.Fatal("Failed to check if app is running!")
+		log.Println("Failed to check if app is running!")
+		exit(1)
 	}
 	var containers Containers
 	err = json.Unmarshal([]byte(output), &containers)
 	if err != nil {
-		log.Fatal("Failed to parse JSON from docker-compose!")
+		log.Println("Failed to parse JSON from docker-compose!")
+		exit(1)
 	}
 	for _, element := range containers {
 		if element.Name == name {
@@ -260,7 +269,7 @@ func is_running(name string) string {
 	return string("0")
 }
 
-func exit() {
+func exit(num int) {
 	log.Println("Stopping non-app containers")
 	for _, container_id := range container_id_list {
 		if len(container_id) > 0 {
@@ -271,6 +280,7 @@ func exit() {
 			}
 		}
 	}
+	os.Exit(num)
 }
 
 func setup_exit_handler() {
@@ -278,8 +288,7 @@ func setup_exit_handler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		exit()
-		os.Exit(0)
+		exit(0)
 	}()
 }
 
@@ -289,10 +298,11 @@ func handle_requests() {
 	log.Println("Listening for websocket messages at " + *addr + "/ws")
 	root_content, err := fs.Sub(content, "web")
 	if err != nil {
-		log.Fatal("No files to server for web interface!")
+		log.Println("No files to server for web interface!")
+		exit(1)
 	}
 	router.PathPrefix("/").Handler(http.FileServer(http.FS(root_content)))
-	log.Fatal(http.ListenAndServe(*addr, router))
+	log.Println(http.ListenAndServe(*addr, router))
 }
 
 
