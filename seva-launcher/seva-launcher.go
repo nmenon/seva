@@ -36,14 +36,14 @@ var content embed.FS
 var docker_compose_bin []byte
 
 type Containers []struct {
-	ID       string `json:"ID"`
-	Name     string `json:"Name"`
-	Command  string `json:"Command"`
-	Project  string `json:"Project"`
-	Service  string `json:"Service"`
-	State    string `json:"State"`
-	Health   string `json:"Health"`
-	ExitCode int    `json:"ExitCode"`
+	ID         string `json:"ID"`
+	Name       string `json:"Name"`
+	Command    string `json:"Command"`
+	Project    string `json:"Project"`
+	Service    string `json:"Service"`
+	State      string `json:"State"`
+	Health     string `json:"Health"`
+	ExitCode   int    `json:"ExitCode"`
 	Publishers []struct {
 		URL           string `json:"URL"`
 		TargetPort    int    `json:"TargetPort"`
@@ -87,32 +87,32 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("recv: %s", message)
 		var resp = string("")
-		switch(string(message)) {
-			case "start_app":
-				resp = start_app()
-			case "load_app":
-				var name []byte
-				_, name, err = c.ReadMessage()
-				if err != nil {
-					log.Println("read:", err)
-					break
-				}
-				resp = load_app(string(name))
-			case "stop_app":
-				resp = stop_app()
-			case "get_app":
-				resp = get_app()
-			case "is_running":
-				var name []byte
-				_, name, err = c.ReadMessage()
-				if err != nil {
-					log.Println("read:", err)
-					break
-				}
-				resp = is_running(string(name))
-			default:
-				resp = "Ignoring invalid command"
-				log.Println(resp)
+		switch string(message) {
+		case "start_app":
+			resp = start_app()
+		case "load_app":
+			var name []byte
+			_, name, err = c.ReadMessage()
+			if err != nil {
+				log.Println("read:", err)
+				break
+			}
+			resp = load_app(string(name))
+		case "stop_app":
+			resp = stop_app()
+		case "get_app":
+			resp = get_app()
+		case "is_running":
+			var name []byte
+			_, name, err = c.ReadMessage()
+			if err != nil {
+				log.Println("read:", err)
+				break
+			}
+			resp = is_running(string(name))
+		default:
+			resp = "Ignoring invalid command"
+			log.Println(resp)
 		}
 		if resp != "" {
 			err = c.WriteMessage(websocket.TextMessage, []byte(resp))
@@ -156,7 +156,7 @@ func launch_docker_browser() {
 		"-e", "XAUTHORITY",
 		"-e", "XDG_RUNTIME_DIR",
 		"-e", "WAYLAND_DISPLAY",
-		"-v", xdg_runtime_dir + ":" + xdg_runtime_dir,
+		"-v", xdg_runtime_dir+":"+xdg_runtime_dir,
 		"ghcr.io/nmenon/demo_baseline_browser:latest",
 		"http://localhost:8000/",
 	)
@@ -304,7 +304,6 @@ func handle_requests() {
 	router.PathPrefix("/").Handler(http.FileServer(http.FS(root_content)))
 	log.Println(http.ListenAndServe(*addr, router))
 }
-
 
 func main() {
 	setup_exit_handler()
