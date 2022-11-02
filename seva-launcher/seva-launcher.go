@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"strings"
 	"syscall"
 
@@ -151,12 +152,18 @@ func launch_browser() {
 
 func launch_docker_browser() {
 	xdg_runtime_dir := os.Getenv("XDG_RUNTIME_DIR")
+	user, _ := user.Current()
 	output := docker_run("--rm", "--privileged", "--network", "host",
 		"-v", "/tmp/.X11-unix",
 		"-e", "XAUTHORITY",
-		"-e", "XDG_RUNTIME_DIR",
+		"-e", "XDG_RUNTIME_DIR=/tmp",
+		"-e", "DISPLAY",
 		"-e", "WAYLAND_DISPLAY",
-		"-v", xdg_runtime_dir+":"+xdg_runtime_dir,
+		"-e", "https_proxy",
+		"-e", "http_proxy",
+		"-e", "no_proxy",
+		"-v", xdg_runtime_dir+":/tmp",
+		"--user="+user.Uid+":"+user.Gid,
 		"ghcr.io/nmenon/demo_baseline_browser:latest",
 		"http://localhost:8000/",
 	)
@@ -305,8 +312,20 @@ func handle_requests() {
 	log.Println(http.ListenAndServe(*addr, router))
 }
 
+func check_env_vars() {
+	for _, element := range []string{"DISPLAY", "WAYLAND_DISPLAY"} {
+		env_var := os.Getenv(element)
+		if len(env_var) > 0 {
+			return
+		}
+	}
+	log.Println("Environment variable DISPLAY or WAYLAND_DISPLAY must be set!")
+	exit(1)
+}
+
 func main() {
 	setup_exit_handler()
+	check_env_vars()
 	flag.Parse()
 
 	log.Println("Setting up working directory")
