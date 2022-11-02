@@ -6,14 +6,14 @@ import (
 	"errors"
 	"flag"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
-	"syscall"
 	"strings"
-	"io/ioutil"
+	"syscall"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -24,6 +24,7 @@ import (
 var store_url = "https://raw.githubusercontent.com/StaticRocket/seva-apps/main"
 var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
+var docker_browser = flag.Bool("docker-browser", false, "force use of docker browser")
 var upgrader = websocket.Upgrader{}
 var container_id_list [2]string
 var docker_compose string
@@ -53,10 +54,10 @@ type Containers []struct {
 
 func is_docker_compose_installed() bool {
 	cmd := exec.Command("docker-compose", "-v")
-	output, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println("Docker-compose is either not installed or cannot be executed")
-		log.Printf("|\n%s\n", output)
+		log.Println(err)
 		log.Println("Using local install for now")
 		return false
 	}
@@ -135,22 +136,41 @@ func setup_working_directory() {
 }
 
 func launch_browser() {
-	err := open.Start("http://localhost:8000/")
-	if err != nil {
-		log.Println("Host browser not detected. Fetching one through docker")
-		docker_run("--rm", "")
+	if *docker_browser {
+		go launch_docker_browser()
+	} else {
+		err := open.Start("http://localhost:8000/")
+		if err != nil {
+			log.Println("Host browser not detected, fetching one through docker")
+			go launch_docker_browser()
+		}
 	}
 }
 
-func docker_run(args ...string) string {
+func launch_docker_browser() {
+	xdg_runtime_dir := os.Getenv("XDG_RUNTIME_DIR")
+	output := docker_run("--rm", "--privileged", "--network", "host",
+		"-v", "/tmp/.X11-unix",
+		"-e", "XAUTHORITY",
+		"-e", "XDG_RUNTIME_DIR",
+		"-e", "WAYLAND_DISPLAY",
+		"-v", xdg_runtime_dir + ":" + xdg_runtime_dir,
+		"ghcr.io/nmenon/demo_baseline_browser:latest",
+		"http://localhost:8000/",
+	)
+	container_id_list[1] = strings.TrimSpace(string(output))
+}
+
+func docker_run(args ...string) []byte {
 	args = append([]string{"run", "-d"}, args...)
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	log.Printf("|\n%s\n", output)
 	if err != nil {
-		log.Fatal("Failed to start container!")
+		log.Println("Failed to start container!")
+		log.Fatal(err)
 	}
-	return string(output)
+	return output
 }
 
 func start_design_gallery() {
@@ -251,7 +271,6 @@ func exit() {
 			}
 		}
 	}
-	// TODO
 }
 
 func setup_exit_handler() {
@@ -285,7 +304,7 @@ func main() {
 	setup_working_directory()
 	docker_compose = prepare_compose()
 
-	start_design_gallery()
+	go start_design_gallery()
 
 	if !*no_browser {
 		log.Println("Launching browser")
