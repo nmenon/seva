@@ -164,7 +164,7 @@ func launch_docker_browser() {
 		"-e", "no_proxy",
 		"-v", xdg_runtime_dir+":/tmp",
 		"--user="+user.Uid+":"+user.Gid,
-		"ghcr.io/nmenon/demo_baseline_browser:latest",
+		"ghcr.io/staticrocket/seva-browser:latest",
 		"http://localhost:8000/",
 	)
 	container_id_list[1] = strings.TrimSpace(string(output))
