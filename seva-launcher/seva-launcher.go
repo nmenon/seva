@@ -185,7 +185,9 @@ func docker_run(args ...string) []byte {
 
 func start_design_gallery() {
 	log.Println("Starting local design gallery service")
-	output := docker_run("--rm", "-p", "8001:80", "ghcr.io/staticrocket/seva-design-gallery:latest")
+	output := docker_run("--rm", "-p", "8001:80",
+		"ghcr.io/staticrocket/seva-design-gallery:latest",
+	)
 	container_id_list[0] = strings.TrimSpace(string(output))
 }
 
