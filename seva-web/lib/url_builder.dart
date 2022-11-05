@@ -19,10 +19,10 @@ String build_url(String app_name, UrlType url_type) {
 
 class AppMetadata {
   // class to hold application data
-   String name = "No app selected";
-   String note = "Select an app from the store";
-   String source_url = "";
-   bool   has_web_interface = false;
+  String name = "No app selected";
+  String note = "Select an app from the store";
+  String source_url = "";
+  bool has_web_interface = false;
 
   AppMetadata(this.name, this.note, this.source_url, this.has_web_interface);
 

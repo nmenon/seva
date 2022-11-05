@@ -24,9 +24,13 @@ class WebSocketStatusState extends State<WebSocketStatus> {
 
   Future<String> response_handler() async {
     // catch the response code and update state accordingly
-    setState(() {waiting_on_response = true;});
+    setState(() {
+      waiting_on_response = true;
+    });
     String response = await stream.first;
-    setState(() {waiting_on_response = false;});
+    setState(() {
+      waiting_on_response = false;
+    });
     return response;
   }
 
@@ -90,11 +94,11 @@ class WebSocketStatusState extends State<WebSocketStatus> {
     return Scaffold(
       body: Center(
         child: waiting_on_response
-          ? Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            )
-          : normal_view(context),
+            ? Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              )
+            : normal_view(context),
       ),
     );
   }
@@ -110,20 +114,18 @@ class WebSocketStatusState extends State<WebSocketStatus> {
         Padding(
           padding: EdgeInsets.all(16),
           child: app_is_running
-            ? FloatingActionButton(
-                onPressed: stop_app,
-                tooltip: 'Stop',
-                child: const Icon(Icons.stop),
-              )
-            : FloatingActionButton(
-                onPressed: start_app,
-                tooltip: 'Run',
-                child: const Icon(Icons.play_arrow_outlined),
-              ),
+              ? FloatingActionButton(
+                  onPressed: stop_app,
+                  tooltip: 'Stop',
+                  child: const Icon(Icons.stop),
+                )
+              : FloatingActionButton(
+                  onPressed: start_app,
+                  tooltip: 'Run',
+                  child: const Icon(Icons.play_arrow_outlined),
+                ),
         ),
-        Text(
-          _selected_app.note
-        ),
+        Text(_selected_app.note),
       ],
     );
   }
