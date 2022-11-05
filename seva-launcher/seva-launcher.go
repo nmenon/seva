@@ -218,7 +218,7 @@ func stop_app() string {
 
 func get_app() string {
 	if _, err := os.Stat("metadata.json"); errors.Is(err, os.ErrNotExist) {
-		return ""
+		return "{}"
 	}
 	content, err := os.ReadFile("metadata.json")
 	if err != nil {

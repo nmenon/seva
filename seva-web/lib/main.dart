@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: const MyHomePage(title: 'Seva Home Page'),
+      home: const MyHomePage(title: 'Seva Control Center'),
       scaffoldMessengerKey: rootScaffoldMessengerKey,
     );
   }
@@ -41,12 +41,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final GlobalKey<WebSocketStatusState> _websocket_key = GlobalKey();
-  AppMetadata _selected_app = AppMetadata(
-    "No app selected",
-    "Select an app from the store",
-    "",
-    false,
-  );
+  AppMetadata _selected_app = AppMetadata.empty();
   String _message_data = '';
   bool _store_connected = false;
 

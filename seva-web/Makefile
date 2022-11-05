@@ -1,4 +1,4 @@
-build/web:
+build/web: $(shell find . -name '*.dart')
 	flutter build web --web-renderer html
 
 .PHONY: all seva-web clean

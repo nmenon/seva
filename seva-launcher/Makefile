@@ -22,7 +22,8 @@ docker-compose:
 	mv docker-compose-linux-$(ARCH) docker-compose
 	chmod +x docker-compose
 
-web:
+web: $(shell find ../seva-web/build/web)
+	rm -rf web
 	cp -r ../seva-web/build/web/ .
 
 .PHONY: all clean

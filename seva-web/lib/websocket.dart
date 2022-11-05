@@ -18,12 +18,7 @@ class WebSocketStatus extends StatefulWidget {
 }
 
 class WebSocketStatusState extends State<WebSocketStatus> {
-  AppMetadata _selected_app = AppMetadata(
-    "No app selected",
-    "Select an app from the store",
-    "",
-    false,
-  );
+  AppMetadata _selected_app = AppMetadata.empty();
   bool waiting_on_response = false;
   bool app_is_running = false;
 
