@@ -8,7 +8,7 @@ else
 	@echo Unsupported architecture
 endif
 
-seva-launcher: docker-compose web
+seva-launcher: docker-compose web $(shell find . -name '*.go')
 	GOARCH=$(GOARCH) go build -tags netgo .
 
 docker-compose:
