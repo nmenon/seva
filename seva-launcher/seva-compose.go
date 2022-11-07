@@ -14,7 +14,24 @@ import (
 	"github.com/melbahja/got"
 )
 
-func start_app() string {
+type Containers []struct {
+	ID         string `json:"ID"`
+	Name       string `json:"Name"`
+	Command    string `json:"Command"`
+	Project    string `json:"Project"`
+	Service    string `json:"Service"`
+	State      string `json:"State"`
+	Health     string `json:"Health"`
+	ExitCode   int    `json:"ExitCode"`
+	Publishers []struct {
+		URL           string `json:"URL"`
+		TargetPort    int    `json:"TargetPort"`
+		PublishedPort int    `json:"PublishedPort"`
+		Protocol      string `json:"Protocol"`
+	} `json:"Publishers"`
+}
+
+func start_app(command WebSocketCommand) WebSocketCommand {
 	log.Println("Starting selected app")
 	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "up", "-d")
 	output, err := cmd.CombinedOutput()
@@ -23,11 +40,12 @@ func start_app() string {
 		exit(1)
 	}
 	output_s := strings.TrimSpace(string(output))
+	command.Response = append(command.Response, strings.Split(output_s, "\n")...)
 	log.Printf("|\n%s\n", output_s)
-	return output_s
+	return command
 }
 
-func stop_app() string {
+func stop_app(command WebSocketCommand) WebSocketCommand {
 	log.Println("Stopping selected app")
 	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "down", "--remove-orphans")
 	output, err := cmd.CombinedOutput()
@@ -35,25 +53,29 @@ func stop_app() string {
 		log.Println("Failed to stop selected app! (It may not be running!)")
 	}
 	output_s := strings.TrimSpace(string(output))
+	command.Response = append(command.Response, strings.Split(output_s, "\n")...)
 	log.Printf("|\n%s\n", output_s)
-	return output_s
+	return command
 }
 
-func get_app() string {
+func get_app(command WebSocketCommand) WebSocketCommand {
 	if _, err := os.Stat("metadata.json"); errors.Is(err, os.ErrNotExist) {
-		return "{}"
+		command.Response = append(command.Response, "{}")
+		return command
 	}
 	content, err := os.ReadFile("metadata.json")
 	if err != nil {
 		log.Println(err)
 		exit(1)
 	}
-	return string(content)
+	command.Response = []string{string(content)}
+	return command
 }
 
-func load_app(name string) string {
+func load_app(command WebSocketCommand) WebSocketCommand {
+	name := command.Arguments[0]
 	log.Println("Loading " + name + " from store")
-	stop_app()
+	command = stop_app(command)
 
 	files := []string{"metadata.json", "docker-compose.yml"}
 	for _, element := range files {
@@ -76,10 +98,12 @@ func load_app(name string) string {
 			exit(1)
 		}
 	}
-	return string("0")
+	command.Response = append(command.Response, "0")
+	return command
 }
 
-func is_running(name string) string {
+func is_running(command WebSocketCommand) WebSocketCommand {
+	name := command.Arguments[0]
 	log.Println("Checking if " + name + " is running")
 	cmd := exec.Command(docker_compose, "-p", "seva-launcher", "ps", "--format", "json")
 	output, err := cmd.Output()
@@ -95,8 +119,10 @@ func is_running(name string) string {
 	}
 	for _, element := range containers {
 		if element.Name == name {
-			return string("1")
+			command.Response = append(command.Response, "1")
+			return command
 		}
 	}
-	return string("0")
+	command.Response = append(command.Response, "0")
+	return command
 }

@@ -17,12 +17,40 @@ class WebSocketStatus extends StatefulWidget {
   State<WebSocketStatus> createState() => WebSocketStatusState();
 }
 
+class WebSocketCommand {
+  String command;
+  List<String> arguments;
+  int exit_code = 0;
+  List<String> response = [];
+
+  WebSocketCommand(this.command, this.arguments, this.exit_code, this.response);
+
+  WebSocketCommand.outbound(this.command, this.arguments);
+
+  WebSocketCommand.from_json(Map<String, dynamic> json)
+      : command = json['command'],
+        arguments = json['arguments'],
+        exit_code = json['exit_code'],
+        response = json['response'];
+
+  Map<String, dynamic> to_json() => {
+        'command': command,
+        'arguments': arguments,
+        'exit_code': exit_code,
+        'response': response,
+      };
+
+  void send() {
+    channel.sink.add(jsonEncode(this.to_json()));
+  }
+}
+
 class WebSocketStatusState extends State<WebSocketStatus> {
   AppMetadata _selected_app = AppMetadata.empty();
   bool waiting_on_response = false;
   bool app_is_running = false;
 
-  Future<String> response_handler() async {
+  Future<WebSocketCommand> response_handler() async {
     // catch the response code and update state accordingly
     setState(() {
       waiting_on_response = true;
@@ -31,57 +59,55 @@ class WebSocketStatusState extends State<WebSocketStatus> {
     setState(() {
       waiting_on_response = false;
     });
-    return response;
+    return WebSocketCommand.from_json(jsonDecode(response));
   }
 
-  Future<String> start_app() async {
+  Future<WebSocketCommand> start_app() async {
     // tell control daemon to start current app
-    channel.sink.add('start_app');
-    String response = await response_handler();
+    WebSocketCommand.outbound('start_app', []).send();
+    WebSocketCommand command = await response_handler();
     await is_running(_selected_app.name);
-    return response;
+    return command;
   }
 
-  Future<String> stop_app() async {
+  Future<WebSocketCommand> stop_app() async {
     // tell control daemon to stop current app
-    channel.sink.add('stop_app');
-    String response = await response_handler();
+    WebSocketCommand.outbound('stop_app', []).send();
+    WebSocketCommand command = await response_handler();
     await is_running(_selected_app.name);
-    return response;
+    return command;
   }
 
-  Future<String> get_app() async {
+  Future<WebSocketCommand> get_app() async {
     // ask control daemon for currnet app data
-    channel.sink.add('get_app');
+    WebSocketCommand.outbound('get_app', []).send();
     return await response_handler();
   }
 
-  Future<String> load_app(String app_name) async {
+  Future<WebSocketCommand> load_app(String app_name) async {
     // ask control daemon to load new app
-    channel.sink.add('load_app');
-    channel.sink.add(app_name);
-    String response = await response_handler();
+    WebSocketCommand.outbound('load_app', [app_name]).send();
+    WebSocketCommand command = await response_handler();
     await update_app_data();
-    return response;
+    return command;
   }
 
   Future<void> is_running(String app_name) async {
     // check if given app is currently running
     if (app_name != "No app selected") {
-      channel.sink.add('is_running');
-      channel.sink.add(app_name);
-      String response = await response_handler();
+      WebSocketCommand.outbound('is_running', [app_name]).send();
+      WebSocketCommand command = await response_handler();
       setState(() {
-        app_is_running = (response == '1');
+        app_is_running = (command.response[0] == '1');
       });
     }
   }
 
   Future<void> update_app_data() async {
     // update currently displayed app data
-    String response = await get_app();
-    if (response.length > 0) {
-      var recieved_json = jsonDecode(response);
+    WebSocketCommand command = await get_app();
+    if (command.response.length > 0) {
+      var recieved_json = jsonDecode(command.response[0]);
       setState(() {
         _selected_app = AppMetadata.from_json(recieved_json);
       });

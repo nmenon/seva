@@ -15,7 +15,6 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -23,7 +22,6 @@ var store_url = "https://raw.githubusercontent.com/StaticRocket/seva-apps/main"
 var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
 var docker_browser = flag.Bool("docker-browser", false, "force use of docker browser")
-var upgrader = websocket.Upgrader{}
 var container_id_list [2]string
 var docker_compose string
 
@@ -32,23 +30,6 @@ var content embed.FS
 
 //go:embed docker-compose
 var docker_compose_bin []byte
-
-type Containers []struct {
-	ID         string `json:"ID"`
-	Name       string `json:"Name"`
-	Command    string `json:"Command"`
-	Project    string `json:"Project"`
-	Service    string `json:"Service"`
-	State      string `json:"State"`
-	Health     string `json:"Health"`
-	ExitCode   int    `json:"ExitCode"`
-	Publishers []struct {
-		URL           string `json:"URL"`
-		TargetPort    int    `json:"TargetPort"`
-		PublishedPort int    `json:"PublishedPort"`
-		Protocol      string `json:"Protocol"`
-	} `json:"Publishers"`
-}
 
 func is_docker_compose_installed() bool {
 	cmd := exec.Command("docker-compose", "-v")
@@ -68,58 +49,6 @@ func prepare_compose() string {
 		return "./docker-compose"
 	}
 	return "docker-compose"
-}
-
-func echo(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-	defer c.Close()
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)
-		var resp = string("")
-		switch string(message) {
-		case "start_app":
-			resp = start_app()
-		case "load_app":
-			var name []byte
-			_, name, err = c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			resp = load_app(string(name))
-		case "stop_app":
-			resp = stop_app()
-		case "get_app":
-			resp = get_app()
-		case "is_running":
-			var name []byte
-			_, name, err = c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			resp = is_running(string(name))
-		default:
-			resp = "Ignoring invalid command"
-			log.Println(resp)
-		}
-		if resp != "" {
-			err = c.WriteMessage(websocket.TextMessage, []byte(resp))
-			if err != nil {
-				log.Println("write:", err)
-				break
-			}
-		}
-	}
 }
 
 func setup_working_directory() {
@@ -213,7 +142,7 @@ func setup_exit_handler() {
 
 func handle_requests() {
 	router := mux.NewRouter()
-	router.HandleFunc("/ws", echo)
+	router.HandleFunc("/ws", websocket_controller)
 	log.Println("Listening for websocket messages at " + *addr + "/ws")
 	root_content, err := fs.Sub(content, "web")
 	if err != nil {
