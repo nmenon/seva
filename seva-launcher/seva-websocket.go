@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{}
 type WebSocketCommand struct {
 	Command   string   `json:"command"`
 	Arguments []string `json:"arguments"`
-	ExitCode int      `json:"exit_code"`
+	ExitCode  int      `json:"exit_code"`
 	Response  []string `json:"response"`
 }
 

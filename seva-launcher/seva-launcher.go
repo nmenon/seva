@@ -93,7 +93,8 @@ func launch_docker_browser() {
 		"ghcr.io/staticrocket/seva-browser:latest",
 		"http://localhost:8000/",
 	)
-	container_id_list[1] = strings.TrimSpace(string(output))
+	output_strings := strings.Split(strings.TrimSpace(string(output)), "\n")
+	container_id_list[1] = output_strings[len(output_strings)-1]
 }
 
 func docker_run(args ...string) []byte {
@@ -114,7 +115,8 @@ func start_design_gallery() {
 	output := docker_run("--rm", "-p", "8001:80",
 		"ghcr.io/staticrocket/seva-design-gallery:latest",
 	)
-	container_id_list[0] = strings.TrimSpace(string(output))
+	output_strings := strings.Split(strings.TrimSpace(string(output)), "\n")
+	container_id_list[0] = output_strings[len(output_strings)-1]
 }
 
 func exit(num int) {
