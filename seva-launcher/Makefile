@@ -26,9 +26,11 @@ web: $(shell find ../seva-web/build/web)
 	rm -rf web
 	cp -r ../seva-web/build/web/ .
 
-.PHONY: all clean
+.PHONY: all clean run
 all: seva-launcher
 clean:
 	rm -f seva-launcher
 	rm -f docker-compose
 	rm -rf web
+run: seva-launcher
+	./seva-launcher

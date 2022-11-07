@@ -133,25 +133,73 @@ class WebSocketStatusState extends State<WebSocketStatus> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        Text(
-          _selected_app.name,
-          style: Theme.of(context).textTheme.headline4,
-        ),
-        Padding(
-          padding: EdgeInsets.all(16),
-          child: app_is_running
-              ? FloatingActionButton(
-                  onPressed: stop_app,
-                  tooltip: 'Stop',
-                  child: const Icon(Icons.stop),
-                )
-              : FloatingActionButton(
-                  onPressed: start_app,
-                  tooltip: 'Run',
-                  child: const Icon(Icons.play_arrow_outlined),
+        Card(
+          child: Container(
+            constraints:
+                BoxConstraints(minHeight: 150, maxHeight: 150, maxWidth: 800),
+            child: Row(
+              children: <Widget>[
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Container(
+                        color: Colors.grey,
+                        height: 118,
+                        width: 118,
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Icon(Icons.auto_awesome),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          _selected_app.name,
+                          style: Theme.of(context).textTheme.headline4,
+                        ),
+                      ),
+                      Padding(
+                        padding:
+                            EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                        child: Text(_selected_app.note),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: <Widget>[
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: app_is_running
+                          ? FloatingActionButton(
+                              onPressed: stop_app,
+                              tooltip: 'Stop',
+                              child: const Icon(Icons.stop),
+                            )
+                          : FloatingActionButton(
+                              onPressed: start_app,
+                              tooltip: 'Run',
+                              child: const Icon(Icons.play_arrow_outlined),
+                            ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        Text(_selected_app.note),
       ],
     );
   }
