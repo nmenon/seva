@@ -68,7 +68,7 @@ func launch_browser() {
 	if *docker_browser {
 		go launch_docker_browser()
 	} else {
-		err := open.Start("http://localhost:8000/")
+		err := open.Start("http://localhost:8000/#/")
 		if err != nil {
 			log.Println("Host browser not detected, fetching one through docker")
 			go launch_docker_browser()
@@ -91,7 +91,7 @@ func launch_docker_browser() {
 		"-v", xdg_runtime_dir+":/tmp",
 		"--user="+user.Uid+":"+user.Gid,
 		"ghcr.io/staticrocket/seva-browser:latest",
-		"http://localhost:8000/",
+		"http://localhost:8000/#/",
 	)
 	output_strings := strings.Split(strings.TrimSpace(string(output)), "\n")
 	container_id_list[1] = output_strings[len(output_strings)-1]
