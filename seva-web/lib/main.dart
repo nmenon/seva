@@ -5,12 +5,14 @@ import 'dart:io';
 import 'dart:convert';
 import 'url_builder.dart';
 import 'websocket.dart';
+import 'navigation_menu.dart';
 
 // store url, must point to page with proper message listener
-final String store_url = 'https://staticrocket.github.io/seva-store/';
+final String store_url = 'http://${host_name}:8001/';
 
 // Global key in case we want to use more snackbar messages
-final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() {
   runApp(const MyApp());
@@ -25,7 +27,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: const MyHomePage(title: 'Seva Home Page'),
+      home: const MyHomePage(title: 'Seva Control Center'),
       scaffoldMessengerKey: rootScaffoldMessengerKey,
     );
   }
@@ -41,26 +43,22 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final GlobalKey<WebSocketStatusState> _websocket_key = GlobalKey();
-  AppMetadata _selected_app = AppMetadata(
-    "No app selected",
-    "Select an app from the store",
-    "",
-    false,
-  );
+  AppMetadata _selected_app = AppMetadata.empty();
   String _message_data = '';
   bool _store_connected = false;
 
   void show_warning(String message) {
     // use the scaffold key to display a message at the root of the app
-    rootScaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
-      content: Text(message)
-    ));
+    rootScaffoldMessengerKey.currentState
+        ?.showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _app_hook(event) async {
     // store hook handler
     if (event.data == 'seva-init')
-      setState(() {_store_connected = true;});
+      setState(() {
+        _store_connected = true;
+      });
     else {
       _message_data = event.data;
       await _fetch_app_metadata();
@@ -87,8 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _selected_app = AppMetadata.from_json(recieved_json);
       });
       await _websocket_key.currentState?.load_app(_message_data);
-    }
-    else {
+    } else {
       show_warning('Failed to load data');
     }
   }
@@ -96,34 +93,34 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: WebSocketStatus(key: _websocket_key),
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: _store_connected
-              ? Tooltip(
-                  message: "Store handshake has occurred successfully",
-                  child: const Icon(Icons.sync),
-                )
-              : Tooltip(
-                  message: "Store handshake has not occurred",
-                  child: const Icon(Icons.sync_disabled),
-                ),
-          ),
-          FloatingActionButton(
-            onPressed: _launch_app_browser,
-            tooltip: 'Store',
-            child: const Icon(Icons.apps),
-          ),
-        ],
-      )
-    );
+        drawer: NavigationMenu(),
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: Center(
+          child: WebSocketStatus(key: _websocket_key),
+        ),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: _store_connected
+                  ? Tooltip(
+                      message: "Store handshake has occurred successfully",
+                      child: const Icon(Icons.sync),
+                    )
+                  : Tooltip(
+                      message: "Store handshake has not occurred",
+                      child: const Icon(Icons.sync_disabled),
+                    ),
+            ),
+            FloatingActionButton(
+              onPressed: _launch_app_browser,
+              tooltip: 'Store',
+              child: const Icon(Icons.apps),
+            ),
+          ],
+        ));
   }
 }

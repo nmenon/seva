@@ -1,0 +1,50 @@
+name: Go package
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.3.1'
+          channel: 'stable'
+
+      - name: Build seva-web
+        run: |
+          cd seva-web
+          make
+
+      - name: Build seva-launcher
+        run: |
+          cd seva-launcher
+          make ARCH=aarch64
+          cp seva-launcher seva-launcher-aarch64
+          make clean
+          make ARCH=x86_64
+          cp seva-launcher seva-launcher-x86_64
+          make clean
+
+      - name: Create seva-web zip
+        uses: thedoctor0/zip-release@main
+        with:
+          type: 'zip'
+          filename: 'seva-web.zip'
+          directory: 'seva-web/build'
+
+      - name: Upload release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "seva-web/build/seva-web.zip,seva-launcher/seva-launcher-*"
+          token: ${{ secrets.GHTOKEN }}
