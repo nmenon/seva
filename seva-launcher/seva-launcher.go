@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -22,6 +23,9 @@ var store_url = "https://raw.githubusercontent.com/StaticRocket/seva-apps/main"
 var addr = flag.String("addr", "0.0.0.0:8000", "http service address")
 var no_browser = flag.Bool("no-browser", false, "do not launch browser")
 var docker_browser = flag.Bool("docker-browser", false, "force use of docker browser")
+var http_proxy = flag.String("http_proxy", "", "use to set http proxy")
+var no_proxy = flag.String("no_proxy", "", "use to set no-proxy")
+
 var container_id_list [2]string
 var docker_compose string
 
@@ -166,10 +170,35 @@ func check_env_vars() {
 	exit(1)
 }
 
+func valid_proxy() bool {
+	_, err := url.ParseRequestURI(*http_proxy)
+	return err != nil
+}
+
+func setup_proxy() {
+	// Setting up Environment Variables
+	// If http_proxy is valid apply changes to Environment variable
+	if *http_proxy == "" && *no_proxy == "" {
+		// TODO: Revert proxy settings
+	} else if valid_proxy() {
+		proxy_settings := ProxySettings{
+			HTTPS: *http_proxy,
+			HTTP: *http_proxy,
+			FTP: *http_proxy,
+			NO: *no_proxy,
+		}
+		apply_proxy_settings(proxy_settings)
+	} else {
+		log.Println("Invalid proxy given, ignoring proxy settings!")
+	}
+}
+
 func main() {
 	setup_exit_handler()
 	check_env_vars()
 	flag.Parse()
+
+	setup_proxy()
 
 	log.Println("Setting up working directory")
 	setup_working_directory()
